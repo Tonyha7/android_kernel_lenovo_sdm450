@@ -342,6 +342,9 @@ CONFIG_PINCTRL_MSM8940=y
 CONFIG_PINCTRL_MSM8953=y
 CONFIG_GPIO_SYSFS=y
 CONFIG_GPIO_QPNP_PIN=y
+# zhangchao@wind-mobi.com 20180226 begin
+CONFIG_MM8013_FG=y
+# zhangchao@wind-mobi.com 20180226 end	
 CONFIG_SMB1351_USB_CHARGER=y
 CONFIG_SMB135X_CHARGER=y
 CONFIG_QPNP_SMBCHARGER=y
@@ -358,6 +361,9 @@ CONFIG_MSM_APM=y
 CONFIG_SENSORS_EPM_ADC=y
 CONFIG_SENSORS_QPNP_ADC_VOLTAGE=y
 CONFIG_SENSORS_QPNP_ADC_CURRENT=y
+#fengnan@wind-mobi.com add 20180207 begin
+CONFIG_SENSORS_HALL=y
+#fengnan@wind-mobi.com add 20180207 end
 CONFIG_THERMAL=y
 CONFIG_THERMAL_TSENS8974=y
 CONFIG_LIMITS_MONITOR=y
@@ -628,6 +634,9 @@ CONFIG_EXT2_FS=y
 CONFIG_EXT2_FS_XATTR=y
 CONFIG_EXT3_FS=y
 # CONFIG_EXT3_DEFAULTS_TO_ORDERED is not set
+# sunjingtao@wind-mobi.com 20180320 begin
+CONFIG_EXFAT_FS=y
+# sunjingtao@wind-mobi.com 20180320 end
 CONFIG_EXT4_FS=y
 CONFIG_EXT4_FS_SECURITY=y
 CONFIG_QUOTA=y
@@ -711,3 +720,14 @@ CONFIG_CRYPTO_AES_ARM64_CE_CCM=y
 CONFIG_CRYPTO_AES_ARM64_CE_BLK=y
 CONFIG_CRYPTO_AES_ARM64_NEON_BLK=y
 CONFIG_QMI_ENCDEC=y
+#mahui01@wind-mobi.com 2018/9/17 add for lenovo CSDK begin
+CONFIG_WANTJOIN_FIREWALL=y
+#mahui01@wind-mobi.com 2018/9/17 add for lenovo CSDK end
+#sunjingtao@wind-mobi.com add for hardware info 20180328
+CONFIG_HARDWARE_INFO=y
+#chengyewei@wind-mobi.com add for tlmm begin 20180419
+CONFIG_TLMM=y
+#chengyewei@wind-mobi.com add for tlmm end 20180419
+#zhonghongbin@wind-mobi.com add at 20180416 for PA control begin
+CONFIG_FOUR_PA=y
+#zhonghongbin@wind-mobi.com add at 20180416 for PA control end
