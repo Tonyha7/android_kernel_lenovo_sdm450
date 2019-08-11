@@ -52,6 +52,15 @@
 #include "debug.h"
 #include "xhci.h"
 
+//zhangchao@wind-mobi.com modify for OTG OCP at 20180607 begin
+extern struct smbchg_chip *g_smbchg_chip;
+extern bool g_dc_present;  
+extern int get_prop_batt_current_now_otg(struct smbchg_chip *chip);
+int dwc3_typec_en_pin, dwc3_boost_en_pin;
+static int otg_count = 0;
+static int pogo_otg_count = 0;
+//zhangchao@wind-mobi.com modify for OTG OCP at 20180607 end
+
 #define DWC3_IDEV_CHG_MAX 1500
 #define DWC3_HVDCP_CHG_MAX 1800
 #define DWC3_WAKEUP_SRC_TIMEOUT 5000
@@ -274,6 +283,7 @@ struct dwc3_msm {
 	u32                     pm_qos_latency;
 	struct pm_qos_request   pm_qos_req_dma;
 	struct delayed_work     perf_vote_work;
+	struct delayed_work     otg_battery_current_work;   //zhangchao@wind-mobi.com modify for OTG OCP at 20180607
 	enum dwc3_perf_mode	curr_mode;
 };
 
@@ -293,6 +303,7 @@ struct dwc3_msm {
 
 #define PM_QOS_SAMPLE_SEC		2
 #define PM_QOS_THRESHOLD_NOM		400
+#define GET_BATT_CURRENT_SEC		10          //zhangchao@wind-mobi.com modify for OTG OCP at 20180607
 
 static void dwc3_pwr_event_handler(struct dwc3_msm *mdwc);
 static int dwc3_msm_gadget_vbus_draw(struct dwc3_msm *mdwc, unsigned mA);
@@ -2753,6 +2764,7 @@ static int dwc3_cpu_notifier_cb(struct notifier_block *nfb,
 
 static void dwc3_msm_otg_sm_work(struct work_struct *w);
 static void dwc3_msm_otg_perf_vote_work(struct work_struct *w);
+static void dwc3_msm_otg_batt_current_work(struct work_struct *w);  ////zhangchao@wind-mobi.com modify for OTG OCP at 20180607
 
 static int dwc3_msm_get_clk_gdsc(struct dwc3_msm *mdwc)
 {
@@ -2954,6 +2966,7 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 	INIT_WORK(&mdwc->restart_usb_work, dwc3_restart_usb_work);
 	INIT_DELAYED_WORK(&mdwc->sm_work, dwc3_msm_otg_sm_work);
 	INIT_DELAYED_WORK(&mdwc->perf_vote_work, dwc3_msm_otg_perf_vote_work);
+	INIT_DELAYED_WORK(&mdwc->otg_battery_current_work, dwc3_msm_otg_batt_current_work);    //zhangchao@wind-mobi.com modify for OTG OCP at 20180607
 
 	mdwc->sm_usb_wq = create_freezable_workqueue("k_sm_usb");
 	 if (!mdwc->sm_usb_wq) {
@@ -3532,6 +3545,81 @@ static void dwc3_msm_otg_perf_vote_work(struct work_struct *w)
 				msecs_to_jiffies(1000 * PM_QOS_SAMPLE_SEC));
 }
 
+//zhangchao@wind-mobi.com modify for OTG OCP at 20180607 begin
+static void dwc3_msm_otg_batt_current_work(struct work_struct *w)
+{
+	struct dwc3_msm *mdwc = container_of(w, struct dwc3_msm,
+					otg_battery_current_work.work);
+	
+	int ua;
+	pr_err("wind-log POGO charger mode g_dc_present = %d\n",g_dc_present);
+	if (g_dc_present == 1){
+		pr_err("wind-log OTG-POGO mode pogo_otg_count = %d\n",pogo_otg_count);
+		otg_count = 0;
+		ua = get_prop_batt_current_now_otg(g_smbchg_chip);
+		pr_err("wind-log OTG-POGO mode battery current = %d\n",ua);
+		pogo_otg_count++;
+		pr_err("wind-log OTG-POGO mode check pogo_otg_count = %d\n",pogo_otg_count);
+		if (pogo_otg_count < 19) {
+			pr_err("wind-log OTG-POGO mode check sum battery current = %d, pogo_otg_count = %d\n",ua,pogo_otg_count);
+			if (ua < 800000) {
+				pogo_otg_count = 0;
+			}
+			else if (ua > 800000 && pogo_otg_count == 18) {
+				if(gpio_is_valid(dwc3_boost_en_pin)){
+					gpio_request(dwc3_boost_en_pin,"msmdwc,boost_en");
+					gpio_direction_output(dwc3_boost_en_pin,0);
+					pr_err("wind-log OTG-POGO OCP boost_en output low\n");
+				}
+			
+				if(gpio_is_valid(dwc3_typec_en_pin)){
+					gpio_request(dwc3_typec_en_pin,"msmdwc,typec_en");
+					gpio_direction_output(dwc3_typec_en_pin,0);
+					pr_err("wind-log OTG-POGO OCP typec_en output low\n");
+				}
+				
+				pogo_otg_count = 0;
+			}
+
+			pr_err("wind-log OTG-POGO mode reset battery current = %d, pogo_otg_count = %d\n",ua,pogo_otg_count);
+		}
+	} else {
+		pr_err("wind-log OTG mode otg_count = %d\n",otg_count);
+		pogo_otg_count = 0;
+		ua = get_prop_batt_current_now_otg(g_smbchg_chip);
+		pr_err("wind-log OTG mode battery current = %d\n",ua);
+		otg_count++;
+		pr_err("wind-log OTG mode check otg_count = %d\n",otg_count);
+		if (otg_count < 19) {
+			pr_err("wind-log OTG mode check sum battery current = %d, otg_count = %d\n",ua,otg_count);
+			if (ua < 2300000 ) {
+				otg_count = 0;
+			}
+			else if (ua > 2300000 && otg_count == 18 ) {
+				if(gpio_is_valid(dwc3_boost_en_pin)){
+					gpio_request(dwc3_boost_en_pin,"msmdwc,boost_en");
+					gpio_direction_output(dwc3_boost_en_pin,0);
+					pr_err("wind-log OTG OCP boost_en output low\n");
+				}
+			
+				if(gpio_is_valid(dwc3_typec_en_pin)){
+					gpio_request(dwc3_typec_en_pin,"msmdwc,typec_en");
+					gpio_direction_output(dwc3_typec_en_pin,0);
+					pr_err("wind-log OTG OCP typec_en output low\n");
+				}
+				
+				otg_count = 0;
+			}
+
+			pr_err("wind-log OTG mode reset battery current = %d, otg_count = %d\n",ua,otg_count);
+		}
+	}
+	
+	schedule_delayed_work(&mdwc->otg_battery_current_work,
+				msecs_to_jiffies(1000 * GET_BATT_CURRENT_SEC));
+}
+//zhangchao@wind-mobi.com modify for OTG OCP at 20180607 end
+
 /**
  * dwc3_otg_start_host -  helper function for starting/stoping the host controller driver.
  *
@@ -3540,10 +3628,19 @@ static void dwc3_msm_otg_perf_vote_work(struct work_struct *w)
  *
  * Returns 0 on success otherwise negative errno.
  */
+ int g_boost_en_pin = 0;   //zhangchao@wind-mobi.com 20180516 modify for OTG and POGO
 static int dwc3_otg_start_host(struct dwc3_msm *mdwc, int on)
 {
 	struct dwc3 *dwc = platform_get_drvdata(mdwc->dwc3);
 	int ret = 0;
+	//zhangchao@wind-mobi.com 20180516 for OTG and POGO begin
+	struct device_node *node = mdwc->dev->of_node;
+	int typec_en_pin, boost_en_pin;
+	typec_en_pin = of_get_named_gpio(node, "msmdwc,typec_en", 0);
+	dwc3_typec_en_pin = typec_en_pin;
+	boost_en_pin = of_get_named_gpio(node, "msmdwc,boost_en", 0);
+	dwc3_boost_en_pin = boost_en_pin;
+	//zhangchao@wind-mobi.com 20180516 end
 
 	if (!dwc->xhci)
 		return -EINVAL;
@@ -3567,6 +3664,22 @@ static int dwc3_otg_start_host(struct dwc3_msm *mdwc, int on)
 
 	if (on) {
 		dev_dbg(mdwc->dev, "%s: turn on host\n", __func__);
+		//zhangchao@wind-mobi.com 20180516 for OTG and POGO begin
+		if(gpio_is_valid(typec_en_pin)){
+			gpio_request(typec_en_pin,"msmdwc,typec_en");
+			gpio_direction_output(typec_en_pin,1);
+			pr_err("wind-log typec_en output high\n");
+		}
+		
+		if(gpio_is_valid(boost_en_pin)){
+			gpio_request(boost_en_pin,"msmdwc,boost_en");
+			gpio_direction_output(boost_en_pin,1);
+			g_boost_en_pin = 1;
+			pr_err("wind-log boost_en output high\n");
+		}
+		schedule_delayed_work(&mdwc->otg_battery_current_work,
+				msecs_to_jiffies(1000 * GET_BATT_CURRENT_SEC));
+		//zhangchao@wind-mobi.com 20180516 end
 
 		pm_runtime_get_sync(mdwc->dev);
 		dbg_event(0xFF, "StrtHost gync",
@@ -3653,6 +3766,23 @@ static int dwc3_otg_start_host(struct dwc3_msm *mdwc, int on)
 			msecs_to_jiffies(1000 * PM_QOS_SAMPLE_SEC));
 	} else {
 		dev_dbg(mdwc->dev, "%s: turn off host\n", __func__);
+		//zhangchao@wind-mobi.com 20180516 for OTG and POGO begin
+		if(gpio_is_valid(boost_en_pin)){
+			gpio_request(boost_en_pin,"msmdwc,boost_en");
+			gpio_direction_output(boost_en_pin,0);
+			g_boost_en_pin = 0;
+			pr_err("wind-log boost_en output low\n");
+		}
+		
+		if(gpio_is_valid(typec_en_pin)){
+			gpio_request(typec_en_pin,"msmdwc,typec_en");
+			gpio_direction_output(typec_en_pin,0);
+			pr_err("wind-log typec_en output low\n");
+		}
+		otg_count = 0;
+		pogo_otg_count = 0;
+		cancel_delayed_work_sync(&mdwc->otg_battery_current_work);
+		//zhangchao@wind-mobi.com 20180516 end
 
 		usb_unregister_atomic_notify(&mdwc->usbdev_nb);
 		if (!IS_ERR(mdwc->vbus_reg))
