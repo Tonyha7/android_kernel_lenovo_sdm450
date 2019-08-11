@@ -220,6 +220,9 @@
 			regulator-min-microvolt = <2850000>;
 			regulator-max-microvolt = <2850000>;
 			qcom,init-voltage = <2850000>;
+			//fengnan@wind-mobi.com add at 20180410 begin
+			regulator-always-on;
+			//fengnan@wind-mobi.com add at 20180410 end
 			status = "okay";
 		};
 	};
@@ -227,9 +230,11 @@
 	rpm-regulator-ldoa11 {
 		status = "okay";
 		pm8953_l11: regulator-l11 {
-			regulator-min-microvolt = <2950000>;
-			regulator-max-microvolt = <2950000>;
-			qcom,init-voltage = <2950000>;
+		//sunsiyuan@wind-mobi.com modify at 20180209 begin
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+			qcom,init-voltage = <3300000>;
+		//sunsiyuan@wind-mobi.com modify at 20180209 end
 			status = "okay";
 		};
 	};

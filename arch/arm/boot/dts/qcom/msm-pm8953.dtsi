@@ -39,6 +39,12 @@
 			qcom,pon_1 {
 				qcom,pon-type = <0>;
 				qcom,pull-up = <1>;
+				//shutdown when power key hold 7s --sunsiyuan@wind-mobi.com modify at 20180626 begin
+				qcom,support-reset = <1>;
+				qcom,s1-timer = <6720>;
+				qcom,s2-timer = <500>;
+				qcom,s2-type = <4>;
+				//shutdown when power key hold 7s --sunsiyuan@wind-mobi.com modify at 20180626 end
 				linux,code = <116>;
 			};
 
@@ -82,6 +88,9 @@
 			mpp@a100 {
 				reg = <0xa100 0x100>;
 				qcom,pin-num = <2>;
+				/*huyunge@wind-mobi.com 20180228 begin*/
+				status = "okay";
+				/*huyunge@wind-mobi.com 20180228 end*/
 			};
 
 			mpp@a200 {
@@ -264,6 +273,27 @@
 						"vbus-err",
 						"vconn-oc";
 		};
+		/*zhangchao@wind-mobi.com 20180323 begin*/
+		qcom,leds@a100 {
+			compatible = "qcom,leds-qpnp";
+			reg = <0xa100 0x100>;
+			status = "okay";
+			qcom,led_mpp_2 {
+				label = "mpp";
+				linux,name = "blue";
+				linux,default-trigger = "none";
+				qcom,default-state = "off";
+				qcom,max-current = <40>;
+				qcom,current-setting = <20>;
+				qcom,id = <6>;
+				qcom,mode = "pwm";
+				qcom,source-sel = <0x0A>;
+				qcom,mode-ctrl = <0x60>;
+				pwms = <&pm8953_pwm 0 0>;
+				qcom,pwm-us = <2300000>;
+            	};
+		};
+		/*zhangchao@wind-mobi.com 20180323 end*/
 	};
 
 	pm8953_1: qcom,pm8953@1 {
@@ -272,14 +302,23 @@
 		#address-cells = <1>;
 		#size-cells = <1>;
 
+		/*zhangchao@wind-mobi.com 20180323 begin*/
 		pm8953_pwm: pwm@bc00 {
-			status = "disabled";
+			status = "okay";
 			compatible = "qcom,qpnp-pwm";
 			reg = <0xbc00 0x100>;
 			reg-names = "qpnp-lpg-channel-base";
 			qcom,channel-id = <0>;
 			qcom,supported-sizes = <6>, <9>;
 			#pwm-cells = <2>;
+			qcom,period = <6000000>;
+			qcom,dtest-output = <2>;
+			qcom,dtest-line = <2>;
+			qcom,pwm {
+				qcom,duty = <4000000>;
+				label = "pwm";
+			};
 		};
+		/*zhangchao@wind-mobi.com 20180323 end*/
 	};
 };

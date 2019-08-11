@@ -57,12 +57,13 @@
 		#size-cells = <2>;
 		ranges;
 
+        /* extend ta memory size to 40M sunsiyuan@wind-mobi.com 20180621 modify start */
 		other_ext_mem: other_ext_region@0 {
 			compatible = "removed-dma-pool";
 			no-map;
-			reg = <0x0 0x85b00000 0x0 0xd00000>;
+			reg = <0x0 0x83b00000 0x0 0x2d00000>;
 		};
-
+        /* extend ta memory size to 40M sunsiyuan@wind-mobi.com 20180621 modify end */
 		modem_mem: modem_region@0 {
 			compatible = "removed-dma-pool";
 			no-map;
@@ -146,6 +147,7 @@
 		i2c2 = &i2c_2;
 		i2c3 = &i2c_3;
 		i2c5 = &i2c_5;
+		i2c8 = &i2c_8;/* fengnan@wind-mobi.com add 20180308 */
 		spi3 = &spi_3;
 	};
 
@@ -665,6 +667,8 @@
 		status = "disabled";
 	};
 
+	/* caisijing@wind-mobi.com 20180202 modify start */
+//sunjingtao@wind-mobi.com modify at 20180208 begin	
 	blsp2_uart0: uart@7aef000 {
 		compatible = "qcom,msm-hsuart-v14";
 		reg = <0x7aef000 0x200>,
@@ -688,8 +692,8 @@
 		clocks = <&clock_gcc clk_gcc_blsp2_uart1_apps_clk>,
 			<&clock_gcc clk_gcc_blsp2_ahb_clk>;
 		pinctrl-names = "sleep", "default";
-		pinctrl-0 = <&blsp2_uart0_sleep>;
-		pinctrl-1 = <&blsp2_uart0_active>;
+		/*pinctrl-0 = <&blsp2_uart0_sleep>;*/
+		/*pinctrl-1 = <&blsp2_uart0_active>;*/
 		qcom,bam-tx-ep-pipe-index = <0>;
 		qcom,bam-rx-ep-pipe-index = <1>;
 		qcom,msm-bus,name = "blsp2_uart0";
@@ -700,6 +704,8 @@
 				<84 512 500 800>;
 		status = "disabled";
 	};
+//sunjingtao@wind-mobi.com modify at 20180208 end	
+	/* caisijing@wind-mobi.com 20180202 modify end */
 
 	dma_blsp1: qcom,sps-dma@7884000 { /* BLSP1 */
 		#dma-cells = <4>;
@@ -812,7 +818,7 @@
 		dmas = <&dma_blsp1 8 64 0x20000020 0x20>,
 			<&dma_blsp1 9 32 0x20000020 0x20>;
 		dma-names = "tx", "rx";
-		status = "disabled";
+		status = "okay"; //sunjingtao@wind-mobi.com modify at 20180208
 	};
 
 	i2c_5: i2c@7af5000 { /* BLSP2 QUP1 */
@@ -839,7 +845,32 @@
 			<&dma_blsp2 5 32 0x20000020 0x20>;
 		dma-names = "tx", "rx";
 	};
+/* fengnan@wind-mobi.com add 20180308 begin*/
+	i2c_8: i2c@7af8000 { /* BLSP2 QUP3 */
+		compatible = "qcom,i2c-msm-v2";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "qup_phys_addr";
+		reg = <0x7af8000 0x600>;
+		interrupt-names = "qup_irq";
+		interrupts = <0 302 0>;
+		qcom,clk-freq-out = <400000>;
+		qcom,clk-freq-in  = <19200000>;
+		clock-names = "iface_clk", "core_clk";
+		clocks = <&clock_gcc clk_gcc_blsp2_ahb_clk>,
+			<&clock_gcc clk_gcc_blsp2_qup4_i2c_apps_clk>;
 
+		pinctrl-names = "i2c_active", "i2c_sleep";
+		pinctrl-0 = <&i2c_8_active>;
+		pinctrl-1 = <&i2c_8_sleep>;
+		qcom,noise-rjct-scl = <0>;
+		qcom,noise-rjct-sda = <0>;
+		qcom,master-id = <84>;
+		dmas = <&dma_blsp2 10 64 0x20000020 0x20>,
+			<&dma_blsp2 11 32 0x20000020 0x20>;
+		dma-names = "tx", "rx";
+	};
+/* fengnan@wind-mobi.com add 20180308 end*/
 	slim_msm: slim@c140000{
 		cell-index = <1>;
 		compatible = "qcom,slim-ngd";
@@ -2082,6 +2113,13 @@
 
 		interrupts = <0 136 0>, <0 220 0>, <0 134 0>;
 		interrupt-names = "hs_phy_irq", "ss_phy_irq", "pwr_event_irq";
+		
+		/*zhangchao@wind-mobi.com 20180516 for OTG and POGO begin*/
+		pinctrl-names = "default";
+		pinctrl-0 = <&typec_en_default &boost_en_default>;
+		msmdwc,typec_en = <&tlmm 13 0>;
+		msmdwc,boost_en = <&tlmm 12 0>;
+		/*zhangchao@wind-mobi.com 20180516 end*/
 
 		USB3_GDSC-supply = <&gdsc_usb30>;
 		qcom,usb-dbm = <&dbm_1p5>;
@@ -2200,11 +2238,11 @@
 		vdda18-supply = <&pm8953_l7>;
 		vdda33-supply = <&pm8953_l13>;
 		qcom,vdd-voltage-level = <0 925000 925000>;
-
+/*zhangjialong@wind-mobi.com add 20180320 begin */
 		qcom,qusb-phy-init-seq = <0xF8 0x80
-					0xB3 0x84
+					0x53 0x84
 					0x83 0x88
-					0xC0 0x8C
+					0xC7 0x8C
 					0x14 0x9C
 					0x30 0x08
 					0x79 0x0C
@@ -2213,7 +2251,7 @@
 					0x9F 0x1C
 					0x00 0x18>;
 		phy_type= "utmi";
-
+/*zhangjialong@wind-mobi.com add 20180320 end */
 		clocks = <&clock_gcc clk_bb_clk1>,
 			 <&clock_gcc clk_gcc_qusb_ref_clk>,
 			 <&clock_gcc clk_gcc_usb_phy_cfg_ahb_clk>,

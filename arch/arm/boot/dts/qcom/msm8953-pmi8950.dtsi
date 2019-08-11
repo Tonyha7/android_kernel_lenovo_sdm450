@@ -16,14 +16,20 @@
 		cell-index = <0>;
 		compatible = "qcom,camera-flash";
 		qcom,flash-type = <1>;
-		qcom,flash-source = <&pmi8950_flash0 &pmi8950_flash1>;
-		qcom,torch-source = <&pmi8950_torch0 &pmi8950_torch1>;
+		//huyunge@wind-mobi.com modify 20180510 start
+		//qcom,flash-source = <&pmi8950_flash0 &pmi8950_flash1>;
+		qcom,flash-source = <&pmi8950_flash0>;
+		//qcom,torch-source = <&pmi8950_torch0 &pmi8950_torch1>;
+		qcom,torch-source = <&pmi8950_torch0>;
+		//huyunge@wind-mobi.com modify 20180510 end
 		qcom,switch-source = <&pmi8950_switch>;
 	};
 };
 
 &usb3 {
-	vbus_dwc3-supply = <&smbcharger_charger_otg>;
+	/*zhangchao@wind-mobi.com 20180516 for OTG and POGO begin*/
+	/*vbus_dwc3-supply = <&smbcharger_charger_otg>;*/
+	/*zhangchao@wind-mobi.com 20180516 end*/
 };
 
 &mdss_dsi0 {
