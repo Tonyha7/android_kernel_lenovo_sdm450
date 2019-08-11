@@ -1321,6 +1321,14 @@ int q6asm_audio_client_buf_alloc_contiguous(unsigned int dir,
 		pr_err("%s: buffer already allocated\n", __func__);
 		return 0;
 	}
+	
+	//zhonghongbin@wind-mobi.com 20180913 start
+	if(0 == bufcnt){
+		pr_err("zhb %s:invalid buffer count\n",__func__);
+		return -EINVAL;
+	}
+	//zhonghongbin@wind-mobi.com 20180913 end
+	
 	mutex_lock(&ac->cmd_lock);
 	buf = kzalloc(((sizeof(struct audio_buffer))*bufcnt),
 			GFP_KERNEL);

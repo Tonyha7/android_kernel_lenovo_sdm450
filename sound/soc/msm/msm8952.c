@@ -89,19 +89,24 @@ static int msm8952_wsa_switch_event(struct snd_soc_dapm_widget *w,
 static struct wcd_mbhc_config mbhc_cfg = {
 	.read_fw_bin = false,
 	.calibration = NULL,
-	.detect_extn_cable = true,
+	.detect_extn_cable = false,//zhonghongbin@wind-mobi.com modify at 20180720
 	.mono_stero_detection = false,
 	.swap_gnd_mic = NULL,
 	.hs_ext_micbias = false,
 	.key_code[0] = KEY_MEDIA,
-	.key_code[1] = KEY_VOICECOMMAND,
-	.key_code[2] = KEY_VOLUMEUP,
-	.key_code[3] = KEY_VOLUMEDOWN,
+	//zhonghongbin@wind-mobi.com modify at 20180614 start
+	.key_code[1] = KEY_VOLUMEUP,
+	.key_code[2] = KEY_VOLUMEDOWN,
+	.key_code[3] = 0,
+	//zhonghongbin@wind-mobi.com modify at 20180614 end
 	.key_code[4] = 0,
 	.key_code[5] = 0,
 	.key_code[6] = 0,
 	.key_code[7] = 0,
-	.linein_th = 5000,
+    //zhonghongbin@wind-mobi.com modify at 20180814 start 
+	//.linein_th = 5000,
+    .linein_th = 17000,
+    //zhonghongbin@wind-mobi.com modify at 20180814 end
 };
 
 static struct afe_clk_cfg mi2s_rx_clk_v1 = {
@@ -237,63 +242,341 @@ done:
 	return ret;
 }
 
+struct msm8916_asoc_mach_data *pdata_test;//zhonghongbin@wind-mobi.com add at 20180509
+
 int is_ext_spk_gpio_support(struct platform_device *pdev,
 			struct msm8916_asoc_mach_data *pdata)
 {
-	const char *spk_ext_pa = "qcom,msm-spk-ext-pa";
+	//sunsiyuan@wind-mobi.com modify at 20180207 begin
+	const char *spk_ext_pa1 = "qcom,msm-spk-ext-pa1";
+	const char *spk_ext_pa2 = "qcom,msm-spk-ext-pa2";
+//zhonghongbin@wind-mobi.com add at 20180418 begin
+#ifdef CONFIG_FOUR_PA 
+	const char *spk_ext_pa3 = "qcom,msm-spk-ext-pa3";
+	const char *spk_ext_pa4 = "qcom,msm-spk-ext-pa4";
+#endif
+//zhonghongbin@wind-mobi.com add at 20180418 end
 
 	pr_debug("%s:Enter\n", __func__);
 
-	pdata->spk_ext_pa_gpio = of_get_named_gpio(pdev->dev.of_node,
-				spk_ext_pa, 0);
+	pdata->spk_ext_pa1_gpio = of_get_named_gpio(pdev->dev.of_node,
+				spk_ext_pa1, 0);
 
-	if (pdata->spk_ext_pa_gpio < 0) {
+	if (pdata->spk_ext_pa1_gpio < 0) {
 		dev_dbg(&pdev->dev,
-			"%s: missing %s in dt node\n", __func__, spk_ext_pa);
+			"%s: missing %s in dt node\n", __func__, spk_ext_pa1);
 	} else {
-		if (!gpio_is_valid(pdata->spk_ext_pa_gpio)) {
+		if (!gpio_is_valid(pdata->spk_ext_pa1_gpio)) {
 			pr_err("%s: Invalid external speaker gpio: %d",
-				__func__, pdata->spk_ext_pa_gpio);
+				__func__, pdata->spk_ext_pa1_gpio);
 			return -EINVAL;
 		}
 	}
+	
+	pdata->spk_ext_pa2_gpio = of_get_named_gpio(pdev->dev.of_node,
+				spk_ext_pa2, 0);
+
+	if (pdata->spk_ext_pa2_gpio < 0) {
+		dev_dbg(&pdev->dev,
+			"%s: missing %s in dt node\n", __func__, spk_ext_pa2);
+	} else {
+		if (!gpio_is_valid(pdata->spk_ext_pa2_gpio)) {
+			pr_err("%s: Invalid external speaker gpio: %d",
+				__func__, pdata->spk_ext_pa2_gpio);
+			return -EINVAL;
+		}
+	}
+	//sunsiyuan@wind-mobi.com modify at 20180207 end
+
+//zhonghongbin@wind-mobi.com add at 20180418 begin
+#ifdef CONFIG_FOUR_PA 
+	pdata->spk_ext_pa3_gpio = of_get_named_gpio(pdev->dev.of_node,
+				spk_ext_pa3, 0);
+
+	if (pdata->spk_ext_pa3_gpio < 0) {
+		dev_dbg(&pdev->dev,
+			"zhb %s: missing %s in dt node\n", __func__, spk_ext_pa3);
+	} else {
+		if (!gpio_is_valid(pdata->spk_ext_pa3_gpio)) {
+			pr_err("zhb %s: Invalid external speaker gpio: %d",
+				__func__, pdata->spk_ext_pa3_gpio);
+			return -EINVAL;
+		}
+	}
+	
+	pdata->spk_ext_pa4_gpio = of_get_named_gpio(pdev->dev.of_node,
+				spk_ext_pa4, 0);
+
+	if (pdata->spk_ext_pa4_gpio < 0) {
+		dev_dbg(&pdev->dev,
+			"zhb %s: missing %s in dt node\n", __func__, spk_ext_pa4);
+	} else {
+		if (!gpio_is_valid(pdata->spk_ext_pa4_gpio)) {
+			pr_err("zhb %s: Invalid external speaker gpio: %d",
+				__func__, pdata->spk_ext_pa4_gpio);
+			return -EINVAL;
+		}
+	}
+#endif
+//zhonghongbin@wind-mobi.com add at 20180418 end
+	pdata_test = pdata ;//zhonghongbin@wind-mobi.com add at 20180509
 	return 0;
 }
 
-static int enable_spk_ext_pa(struct snd_soc_codec *codec, int enable)
+//sunsiyuan@wind-mobi.com modify at 20180306 begin
+static int speaker_states = 0;
+static ssize_t show_speaker_switch(struct device *dev,struct device_attribute *attr, char *buf)
+{
+    int ret_value = 0;
+    ret_value = sprintf(buf, "%d\n",speaker_states);
+    return ret_value;
+}
+
+static ssize_t store_speaker_switch(struct device *dev,struct device_attribute *attr, const char *buf, size_t size)
+{
+	sscanf(buf,"%d",&speaker_states);	
+	return size;
+}
+
+static DEVICE_ATTR(wind_speaker_switch, 0664, show_speaker_switch, store_speaker_switch);
+//sunsiyuan@wind-mobi.com modify at 20180306 end
+
+//sunsiyuan@wind-mobi.com modify at 20180207 begin
+struct sgm3712_data{
+	int en_gpio;
+	int in_gpio;
+};
+
+//zhonghongbin@wind-mobi.com add at 20180519 begin
+
+static int mmi_spk_states = 0;
+
+static ssize_t show_mmitest_switch(struct device *dev,struct device_attribute *attr, char *buf)
+{
+    int ret_value = 0;
+    ret_value = sprintf(buf, "zhb show_mmitest_switch mmi_spk_states=%d\n",mmi_spk_states);
+    return ret_value;
+}
+
+static ssize_t store_mmitest_switch(struct device *dev,struct device_attribute *attr, const char *buf, size_t size)
+{	
+	sscanf(buf,"%d",&mmi_spk_states);
+	printk("zhb store_mmitest_switch had done!!!");
+	if(mmi_spk_states == 1){
+			gpio_direction_output(pdata_test->spk_ext_pa1_gpio,1);
+			gpio_direction_output(pdata_test->spk_ext_pa2_gpio,0);
+			#ifdef CONFIG_FOUR_PA 
+				gpio_direction_output(pdata_test->spk_ext_pa3_gpio,0);
+				gpio_direction_output(pdata_test->spk_ext_pa4_gpio,0);
+			#endif
+		}else if (mmi_spk_states == 2){
+			gpio_direction_output(pdata_test->spk_ext_pa1_gpio,0);
+			gpio_direction_output(pdata_test->spk_ext_pa2_gpio,1);
+			#ifdef CONFIG_FOUR_PA 
+				gpio_direction_output(pdata_test->spk_ext_pa3_gpio,0);
+				gpio_direction_output(pdata_test->spk_ext_pa4_gpio,0);
+			#endif
+		}
+			
+	#ifdef CONFIG_FOUR_PA 
+		else if (mmi_spk_states == 3){
+			gpio_direction_output(pdata_test->spk_ext_pa1_gpio,0);
+			gpio_direction_output(pdata_test->spk_ext_pa2_gpio,0);
+			gpio_direction_output(pdata_test->spk_ext_pa3_gpio,1);
+			gpio_direction_output(pdata_test->spk_ext_pa4_gpio,0);
+		}else if (mmi_spk_states == 4){
+			gpio_direction_output(pdata_test->spk_ext_pa1_gpio,0);
+			gpio_direction_output(pdata_test->spk_ext_pa2_gpio,0);
+			gpio_direction_output(pdata_test->spk_ext_pa3_gpio,0);
+			gpio_direction_output(pdata_test->spk_ext_pa4_gpio,1);
+		}
+	#endif
+		else if (mmi_spk_states == 0){
+			gpio_direction_output(pdata_test->spk_ext_pa1_gpio,1);
+			gpio_direction_output(pdata_test->spk_ext_pa2_gpio,1);
+			#ifdef CONFIG_FOUR_PA 
+				gpio_direction_output(pdata_test->spk_ext_pa3_gpio,1);
+				gpio_direction_output(pdata_test->spk_ext_pa4_gpio,1);
+			#endif
+		}
+	return size;
+}
+
+static DEVICE_ATTR(wind_mmitest_spk_switch, 0664, show_mmitest_switch, store_mmitest_switch);
+//zhonghongbin@wind-mobi.com add at 20180519 end
+
+//zhonghongbin@wind-mobi.com add at 20180403 begin
+static int cqa_speaker_states = 0;
+static ssize_t show_CQAtest_switch(struct device *dev,struct device_attribute *attr, char *buf)
+{
+    int ret_value = 0;
+    ret_value = sprintf(buf, "zhb show_CQAtest_switch cqa_speaker_states=%d\n",cqa_speaker_states);
+    return ret_value;
+}
+
+static ssize_t store_CQAtest_switch(struct device *dev,struct device_attribute *attr, const char *buf, size_t size)
+{
+
+	sscanf(buf,"%d",&cqa_speaker_states);
+	printk("zhb store_CQAtest_switch had done!!!");
+	return size;
+}
+
+static DEVICE_ATTR(cqatest_switch, 0664, show_CQAtest_switch, store_CQAtest_switch);
+//zhonghongbin@wind-mobi.com add at 20180403 end
+
+static struct sgm3712_data sgm3712_gpio;
+//sunsiyuan@wind-mobi.com modify at 20180207 end
+
+//zhonghongbin@wind-mobi.com modify at 20180429 begin
+static int enable_spk_ext_pa(struct snd_soc_codec *codec, int enable,int HP_EN)
 {
 	struct snd_soc_card *card = codec->component.card;
 	struct msm8916_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
-	int ret;
+	//int ret; //sunsiyuan@wind-mobi.com modify at 20180207
 
-	if (!gpio_is_valid(pdata->spk_ext_pa_gpio)) {
+	if (!gpio_is_valid(pdata->spk_ext_pa1_gpio)) {
 		pr_err("%s: Invalid gpio: %d\n", __func__,
-			pdata->spk_ext_pa_gpio);
+			pdata->spk_ext_pa1_gpio);
 		return false;
 	}
 
 	pr_debug("%s: %s external speaker PA\n", __func__,
 		enable ? "Enable" : "Disable");
 
+
 	if (enable) {
+		pr_debug("zhb %s HP_EN = %d \n", __func__,HP_EN);
+		if(HP_EN == 1)
+			gpio_direction_output(sgm3712_gpio.in_gpio,1); //open headset HPHL/R
+		else if(HP_EN == 0)
+			gpio_direction_output(sgm3712_gpio.in_gpio,0); //close headset HPHL/R
+
+		if(1 == speaker_states || 0 == speaker_states){
+		//set ext pa1 mode 3
+		gpio_direction_output(pdata->spk_ext_pa1_gpio,0);
+		mdelay(20);
+		gpio_direction_output(pdata->spk_ext_pa1_gpio,1);
+		udelay(2);
+		gpio_direction_output(pdata->spk_ext_pa1_gpio,0);
+		udelay(2);
+		gpio_direction_output(pdata->spk_ext_pa1_gpio,1);
+		udelay(2);
+		gpio_direction_output(pdata->spk_ext_pa1_gpio,0);
+		udelay(2);
+		gpio_direction_output(pdata->spk_ext_pa1_gpio,1);
+		}
+		
+		//set ext pa2 mode 3
+		if(2 == speaker_states || 0 == speaker_states){
+		gpio_direction_output(pdata->spk_ext_pa2_gpio,0);
+		mdelay(20);
+		gpio_direction_output(pdata->spk_ext_pa2_gpio,1);
+		udelay(2);
+		gpio_direction_output(pdata->spk_ext_pa2_gpio,0);
+		udelay(2);
+		gpio_direction_output(pdata->spk_ext_pa2_gpio,1);
+		udelay(2);
+		gpio_direction_output(pdata->spk_ext_pa2_gpio,0);
+		udelay(2);
+		gpio_direction_output(pdata->spk_ext_pa2_gpio,1);
+		}
+
+#ifdef CONFIG_FOUR_PA 
+		pr_debug("zhb %s CONFIG_FOUR_PA enable! \n", __func__);
+		//set ext pa3 mode 3
+		if(3 == speaker_states || 0 == speaker_states){	
+		gpio_direction_output(pdata->spk_ext_pa3_gpio,0);
+		mdelay(20);
+		gpio_direction_output(pdata->spk_ext_pa3_gpio,1);
+		udelay(2);
+		gpio_direction_output(pdata->spk_ext_pa3_gpio,0);
+		udelay(2);
+		gpio_direction_output(pdata->spk_ext_pa3_gpio,1);
+		udelay(2);
+		gpio_direction_output(pdata->spk_ext_pa3_gpio,0);
+		udelay(2);
+		gpio_direction_output(pdata->spk_ext_pa3_gpio,1);
+		}
+		
+		//set ext pa4 mode 3
+		if(4 == speaker_states || 0 == speaker_states){	
+		gpio_direction_output(pdata->spk_ext_pa4_gpio,0);
+		mdelay(20);
+		gpio_direction_output(pdata->spk_ext_pa4_gpio,1);
+		udelay(2);
+		gpio_direction_output(pdata->spk_ext_pa4_gpio,0);
+		udelay(2);
+		gpio_direction_output(pdata->spk_ext_pa4_gpio,1);
+		udelay(2);
+		gpio_direction_output(pdata->spk_ext_pa4_gpio,0);
+		udelay(2);
+		gpio_direction_output(pdata->spk_ext_pa4_gpio,1);
+		}
+#endif 
+		//enter ext CQATest mode 
+		pr_debug("zhb %s CQATest cqa_speaker_states=%d\n", __func__,cqa_speaker_states);
+		if(cqa_speaker_states == 1){
+			gpio_direction_output(pdata->spk_ext_pa1_gpio,1);
+			gpio_direction_output(pdata->spk_ext_pa2_gpio,0);
+			#ifdef CONFIG_FOUR_PA 
+				gpio_direction_output(pdata->spk_ext_pa3_gpio,0);
+				gpio_direction_output(pdata->spk_ext_pa4_gpio,0);
+			#endif
+		}else if (cqa_speaker_states == 2){
+			gpio_direction_output(pdata->spk_ext_pa1_gpio,0);
+			gpio_direction_output(pdata->spk_ext_pa2_gpio,1);
+			#ifdef CONFIG_FOUR_PA 
+				gpio_direction_output(pdata->spk_ext_pa3_gpio,0);
+				gpio_direction_output(pdata->spk_ext_pa4_gpio,0);
+			#endif
+		}
+			
+	#ifdef CONFIG_FOUR_PA 
+		else if (cqa_speaker_states == 3){
+			gpio_direction_output(pdata->spk_ext_pa1_gpio,0);
+			gpio_direction_output(pdata->spk_ext_pa2_gpio,0);
+			gpio_direction_output(pdata->spk_ext_pa3_gpio,1);
+			gpio_direction_output(pdata->spk_ext_pa4_gpio,0);
+		}else if (cqa_speaker_states == 4){
+			gpio_direction_output(pdata->spk_ext_pa1_gpio,0);
+			gpio_direction_output(pdata->spk_ext_pa2_gpio,0);
+			gpio_direction_output(pdata->spk_ext_pa3_gpio,0);
+			gpio_direction_output(pdata->spk_ext_pa4_gpio,1);
+		}
+	#endif
+		/*
 		ret = msm_gpioset_activate(CLIENT_WCD_INT, "ext_spk_gpio");
 		if (ret) {
 			pr_err("%s: gpio set cannot be de-activated %s\n",
 					__func__, "ext_spk_gpio");
 			return ret;
 		}
-		gpio_set_value_cansleep(pdata->spk_ext_pa_gpio, enable);
+		gpio_set_value_cansleep(pdata->spk_ext_pa1_gpio, enable);
+		*/
 	} else {
-		gpio_set_value_cansleep(pdata->spk_ext_pa_gpio, enable);
+		speaker_states = 0; 
+		gpio_direction_output(sgm3712_gpio.in_gpio,1); //open headset HPHL/R
+		gpio_direction_output(pdata->spk_ext_pa1_gpio,0);
+		gpio_direction_output(pdata->spk_ext_pa2_gpio,0);
+		#ifdef CONFIG_FOUR_PA 
+			gpio_direction_output(pdata->spk_ext_pa3_gpio,0);
+			gpio_direction_output(pdata->spk_ext_pa4_gpio,0);
+		#endif
+		/*
+		gpio_set_value_cansleep(pdata->spk_ext_pa1_gpio, enable);
 		ret = msm_gpioset_suspend(CLIENT_WCD_INT, "ext_spk_gpio");
 		if (ret) {
 			pr_err("%s: gpio set cannot be de-activated %s\n",
 					__func__, "ext_spk_gpio");
 			return ret;
 		}
+		*/
+		//sunsiyuan@wind-mobi.com modify at 20180306 end
 	}
 	return 0;
 }
+//zhonghongbin@wind-mobi.com modify at 20180429 end
 
 /* Validate whether US EU switch is present or not */
 int is_us_eu_switch_gpio_support(struct platform_device *pdev,
@@ -1545,7 +1828,7 @@ static void *def_msm8952_wcd_mbhc_cal(void)
 		return NULL;
 
 #define S(X, Y) ((WCD_MBHC_CAL_PLUG_TYPE_PTR(msm8952_wcd_cal)->X) = (Y))
-	S(v_hs_max, 1500);
+	S(v_hs_max, 1500);//zhonghongbin@wind-mobi.com modify at 20180711
 #undef S
 #define S(X, Y) ((WCD_MBHC_CAL_BTN_DET_PTR(msm8952_wcd_cal)->X) = (Y))
 	S(num_btn, WCD_MBHC_DEF_BUTTONS);
@@ -1568,16 +1851,18 @@ static void *def_msm8952_wcd_mbhc_cal(void)
 	 * 210-290 == Button 2
 	 * 360-680 == Button 3
 	 */
+	//zhonghongbin@wind-mobi modify at 20180614 start
 	btn_low[0] = 75;
 	btn_high[0] = 75;
-	btn_low[1] = 150;
-	btn_high[1] = 150;
-	btn_low[2] = 225;
-	btn_high[2] = 225;
-	btn_low[3] = 450;
-	btn_high[3] = 450;
+	btn_low[1] = 225;
+	btn_high[1] = 225;
+	btn_low[2] = 450;
+	btn_high[2] = 450;
+	btn_low[3] = 500;
+	btn_high[3] = 500;
 	btn_low[4] = 500;
 	btn_high[4] = 500;
+	//zhonghongbin@wind-mobi modify at 20180614 end
 
 	return msm8952_wcd_cal;
 }
@@ -3208,6 +3493,44 @@ parse_mclk_freq:
 		pr_err("%s:  doesn't support external speaker pa\n",
 				__func__);
 
+	//sunsiyuan@wind-mobi.com modify at 20180207 begin
+	sgm3712_gpio.en_gpio = of_get_named_gpio_flags(pdev->dev.of_node,"qcom,msm-sgm3712-en",0,NULL);
+	
+	if(gpio_is_valid(sgm3712_gpio.en_gpio)){
+		
+		ret = gpio_request(sgm3712_gpio.en_gpio,"sgm3712_en");
+		
+		gpio_direction_output(sgm3712_gpio.en_gpio,1);
+	}
+
+	sgm3712_gpio.in_gpio = of_get_named_gpio_flags(pdev->dev.of_node,"qcom,msm-sgm3712-in",0,NULL);
+	
+	if(gpio_is_valid(sgm3712_gpio.in_gpio)){
+		
+		ret = gpio_request(sgm3712_gpio.in_gpio,"sgm3712_in");
+	
+		gpio_direction_output(sgm3712_gpio.in_gpio,1);
+	}
+	//sunsiyuan@wind-mobi.com modify at 20180207 end
+	
+	//sunsiyuan@wind-mobi.com modify at 20180306 begin
+	if ((ret = device_create_file(&(pdev->dev), &dev_attr_wind_speaker_switch)) != 0){
+		printk("sunsiyuan:device_create_file fail\n");
+	}
+	//sunsiyuan@wind-mobi.com modify at 20180306 end
+
+	//zhonghongbin@wind-mobi.com added by 20180403 begin
+	if ((ret = device_create_file(&(pdev->dev), &dev_attr_cqatest_switch)) != 0){
+		printk("zhb:QCATest_device_create_file fail\n");
+	}
+	//zhonghongbin@wind-mobi.com added by 20180403 end
+
+	//zhonghongbin@wind-mobi.com added by 20180509 begin
+	if ((ret = device_create_file(&(pdev->dev), &dev_attr_wind_mmitest_spk_switch)) != 0){
+		printk("zhb:wind_mmitest_spk_switch_device_create_file fail\n");
+	}
+	//zhonghongbin@wind-mobi.com added by 20180509 end
+
 	ret = of_property_read_string(pdev->dev.of_node,
 		hs_micbias_type, &type);
 	if (ret) {
@@ -3335,6 +3658,11 @@ static int msm8952_asoc_machine_remove(struct platform_device *pdev)
 	}
 	snd_soc_unregister_card(card);
 	mutex_destroy(&pdata->cdc_mclk_mutex);
+	
+	//sunsiyuan@wind-mobi.com modify at 20180306 begin
+	device_remove_file(&(pdev->dev), &dev_attr_wind_speaker_switch);
+	//sunsiyuan@wind-mobi.com modify at 20180306 end
+	
 	return 0;
 }
 

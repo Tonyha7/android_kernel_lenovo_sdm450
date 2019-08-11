@@ -227,7 +227,18 @@ struct msm8916_asoc_mach_data {
 	int codec_type;
 	int ext_pa;
 	int us_euro_gpio;
-	int spk_ext_pa_gpio;
+	//sunsiyuan@wind-mobi.com add at 20180205 begin
+	int spk_ext_pa1_gpio;
+	int spk_ext_pa2_gpio;
+	//sunsiyuan@wind-mobi.com add at 20180205 end
+	
+//zhonghongbin@wind-mobi.com add at 20180418 begin
+#ifdef CONFIG_FOUR_PA 
+	int spk_ext_pa3_gpio;
+	int spk_ext_pa4_gpio;
+#endif
+//zhonghongbin@wind-mobi.com add at 20180418 end
+	
 	int mclk_freq;
 	int lb_mode;
 	int afe_clk_ver;
@@ -314,7 +325,7 @@ struct msm8x16_wcd_priv {
 	/* cal info for codec */
 	struct fw_info *fw_data;
 	struct blocking_notifier_head notifier;
-	int (*codec_spk_ext_pa_cb)(struct snd_soc_codec *codec, int enable);
+	int (*codec_spk_ext_pa_cb)(struct snd_soc_codec *codec, int enable,int HP_EN);//zhonghongbin@wind-mobi.com modify at 20180429 
 	int (*codec_hph_comp_gpio)(bool enable);
 	unsigned long status_mask;
 	struct wcd_imped_i_ref imped_i_ref;
@@ -333,7 +344,7 @@ extern void msm8x16_update_int_spk_boost(bool enable);
 
 extern void msm8x16_wcd_spk_ext_pa_cb(
 		int (*codec_spk_ext_pa)(struct snd_soc_codec *codec,
-		int enable), struct snd_soc_codec *codec);
+		int enable,int HP_EN), struct snd_soc_codec *codec);//zhonghongbin@wind-mobi.com modify at 20180429 
 
 extern void msm8x16_wcd_hph_comp_cb(
 		int (*codec_hph_comp_gpio)(bool enable),
