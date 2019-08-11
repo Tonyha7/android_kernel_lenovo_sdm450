@@ -47,6 +47,9 @@
 #include "thermal_hwmon.h"
 
 #define THERMAL_UEVENT_DATA "type"
+//wangpengpeng@wind-mobi begin at 20180420
+#define PCB_THERM_NAME    "case_therm"
+//wangpengpeng@wind-mobi end at 20180420
 
 MODULE_AUTHOR("Zhang Rui");
 MODULE_DESCRIPTION("Generic thermal management sysfs support");
@@ -65,6 +68,11 @@ static DEFINE_MUTEX(thermal_governor_lock);
 
 static struct thermal_governor *def_governor;
 
+//wangpengpeng@wind-mobi.com begin at 20180420
+struct device *pcb_dev = NULL;
+struct thermal_zone_device *pcb_tz = NULL;
+int fake_pcb_temp = 9999;
+//wangpengpeng@wind-mobi.com end at 20180420
 static struct thermal_governor *__find_governor(const char *name)
 {
 	struct thermal_governor *pos;
@@ -1006,14 +1014,33 @@ temp_show(struct device *dev, struct device_attribute *attr, char *buf)
 	struct thermal_zone_device *tz = to_thermal_zone(dev);
 	long temperature;
 	int ret;
-
+	//wangpengpeng@wind-mobi.com ---just for debug begin at 20180502
+	if(!strcmp(tz->type, PCB_THERM_NAME)){
+		if(fake_pcb_temp != 9999){
+			return sprintf(buf, "%d\n", fake_pcb_temp);
+		}
+	}
+	//wangpengpeng@wind-mobi.com ---just for debug end at 20180502
 	ret = thermal_zone_get_temp(tz, &temperature);
 
 	if (ret)
 		return ret;
-
 	return sprintf(buf, "%ld\n", temperature);
 }
+
+//wangpengpeng@wind-mobi.com ---just for debug begin at 20180502
+static ssize_t
+temp_store(struct device *dev, struct device_attribute *attr,
+	   const char *buf, size_t count)
+{
+	struct thermal_zone_device *tz = to_thermal_zone(dev);
+	if(!strcmp(tz->type, PCB_THERM_NAME)){
+		if (!sscanf(buf, "%d\n", &fake_pcb_temp))
+			return -EINVAL;
+	}
+	return count;
+}
+//wangpengpeng@wind-mobi.com ---just for debug end at 20180502
 
 static ssize_t
 mode_show(struct device *dev, struct device_attribute *attr, char *buf)
@@ -1505,7 +1532,7 @@ int power_actor_set_power(struct thermal_cooling_device *cdev,
 }
 
 static DEVICE_ATTR(type, 0444, type_show, NULL);
-static DEVICE_ATTR(temp, 0444, temp_show, NULL);
+static DEVICE_ATTR(temp, 0644, temp_show, temp_store);//wangpengpeng@wind-mobi.com ---just debug 20180502
 static DEVICE_ATTR(mode, 0644, mode_show, mode_store);
 static DEVICE_ATTR(passive, S_IRUGO | S_IWUSR, passive_show, passive_store);
 static DEVICE_ATTR(policy, S_IRUGO | S_IWUSR, policy_show, policy_store);
@@ -2266,6 +2293,14 @@ struct thermal_zone_device *thermal_zone_device_register(const char *type,
 	result = device_create_file(&tz->device, &dev_attr_temp);
 	if (result)
 		goto unregister;
+        //wangpengpeng@wind-mobi.com begin at 20180420
+        if (!strcmp(type, PCB_THERM_NAME)) {
+            pcb_dev = &tz->device;
+            pcb_tz = to_thermal_zone(pcb_dev);
+			//pcb_tz = tz;
+            pr_err("wind get pcb thermel device\n");
+        }
+        //wangpengpeng@wind-mobi.com end at 20180420
 
 	if (ops->get_mode) {
 		result = device_create_file(&tz->device, &dev_attr_mode);
