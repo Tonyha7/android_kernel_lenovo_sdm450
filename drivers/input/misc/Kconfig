@@ -12,6 +12,14 @@ menuconfig INPUT_MISC
 
 if INPUT_MISC
 
+config INPUT_SX9310
+	tristate "SX9310_SAR_sensor"
+	depends on I2C
+	default y
+	help 
+	  Say Y to enable the SAR detection application, if N here not to use the 
+	  this SAR sensor
+
 config INPUT_FPC1020
 	tristate "FPC1020_sensor"
 	default y

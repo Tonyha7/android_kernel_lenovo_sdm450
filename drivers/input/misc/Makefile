@@ -86,4 +86,8 @@ endif
 obj-$(CONFIG_INPUT_IDEAPAD_SLIDEBAR)	+= ideapad_slidebar.o
 obj-$(CONFIG_INPUT_PIXART_OTS_PAT9125_SWITCH)	+= ots_pat9125/
 
+ifeq ($(WIND_INPUT_SX9310),true)
+#obj-$(CONFIG_INPUT_SX9310)		+= sx9310.o
+endif
+
 obj-$(CONFIG_INPUT_FPC1020)	+= fpc_irq.o fpc1020_platform_tee.o
