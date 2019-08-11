@@ -337,6 +337,12 @@
 
 #define KEY_MICMUTE		248	/* Mute / unmute the microphone */
 
+/* fengnan@wind-mobi.com add at 20180425 begin */
+#define KEY_SAR_LTE_CS1		249
+#define KEY_SAR_LTE_CS2		250
+#define KEY_SAR_WIFI_CS		251
+/* fengnan@wind-mobi.com add at 20180425 end */
+
 /* Code 255 is reserved for special needs of AT keyboard driver */
 
 #define BTN_MISC		0x100

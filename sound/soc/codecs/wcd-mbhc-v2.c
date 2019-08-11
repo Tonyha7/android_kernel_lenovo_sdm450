@@ -42,7 +42,7 @@
 #define OCP_ATTEMPT 1
 #define HS_DETECT_PLUG_TIME_MS (3 * 1000)
 #define SPECIAL_HS_DETECT_TIME_MS (2 * 1000)
-#define MBHC_BUTTON_PRESS_THRESHOLD_MIN 250
+#define MBHC_BUTTON_PRESS_THRESHOLD_MIN 350//zhonghongbin@wind-mobi.com Increase KEY_Event Report time,modify at 20180801
 #define GND_MIC_SWAP_THRESHOLD 4
 #define WCD_FAKE_REMOVAL_MIN_PERIOD_MS 100
 #define HS_VREF_MIN_VAL 1400
@@ -54,6 +54,8 @@
 #define WCD_MBHC_BTN_PRESS_COMPL_TIMEOUT_MS  50
 #define ANC_DETECT_RETRY_CNT 7
 #define WCD_MBHC_SPL_HS_CNT  2
+
+extern int headset_flag ;  //sunjingtao@wind-mobi.com add at 20180801
 
 static int det_extn_cable_en;
 module_param(det_extn_cable_en, int,
@@ -1514,6 +1516,27 @@ static void wcd_mbhc_swch_irq_handler(struct wcd_mbhc *mbhc)
 
 	pr_debug("%s: mbhc->current_plug: %d detection_type: %d\n", __func__,
 			mbhc->current_plug, detection_type);
+//sunjingtao@wind-mobi.com add at 20180801 begin
+	if((MBHC_PLUG_TYPE_HEADSET == detection_type)&&(MBHC_PLUG_TYPE_NONE == mbhc->current_plug))
+	{
+		printk("sunjingtao headset  insertion\n");
+		if(headset_flag == 0)
+		{
+			headset_flag = 1;
+			printk("sunjingtao headset headset_flag ==%d\n",headset_flag);
+		}
+	}
+	if((MBHC_PLUG_TYPE_NONE == detection_type)&&((MBHC_PLUG_TYPE_HEADSET== mbhc->current_plug) || (MBHC_PLUG_TYPE_HEADPHONE ==mbhc->current_plug ) || (MBHC_PLUG_TYPE_HIGH_HPH==mbhc->current_plug ) ))
+	{
+		printk("sunjingtao headset  remove\n");
+		if(headset_flag == 1)
+		{
+			headset_flag = 0;
+			printk("sunjingtao headset headset_flag ==%d\n",headset_flag);
+		}
+	}
+//sunjingtao@wind-mobi.com add at 20180801 begin
+	
 	wcd_cancel_hs_detect_plug(mbhc, &mbhc->correct_plug_swch);
 
 	if (mbhc->mbhc_cb->micbias_enable_status)

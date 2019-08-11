@@ -51,6 +51,11 @@
 #include "sd_ops.h"
 #include "sdio_ops.h"
 
+//add for BH201LN driver--sunsiyuan@wind-mobi.com modify at 20180209 begin
+#define IC_ADD_FUNCTION  1
+#include "../drivers/mmc/host/sdhci.h"
+//add for BH201LN driver--sunsiyuan@wind-mobi.com modify at 20180209 end
+
 EXPORT_TRACEPOINT_SYMBOL_GPL(mmc_blk_erase_start);
 EXPORT_TRACEPOINT_SYMBOL_GPL(mmc_blk_erase_end);
 EXPORT_TRACEPOINT_SYMBOL_GPL(mmc_blk_rw_start);
@@ -487,7 +492,17 @@ static int mmc_devfreq_set_target(struct device *dev,
 
 	pr_debug("%s: target freq = %lu (%s)\n", mmc_hostname(host),
 		*freq, current->comm);
+//BH201LN driver--sunsiyuan@wind-mobi.com modify at 20180326 begin
+#ifdef IC_ADD_FUNCTION 
+	{  struct sdhci_host * sdhost = mmc_priv(host);
 
+			if(sdhci_bht_target_host(sdhost))
+			{			
+				goto out;
+			}
+	}
+#endif
+//BH201LN driver--sunsiyuan@wind-mobi.com modify at 20180326 end
 	if ((clk_scaling->curr_freq == *freq) ||
 		clk_scaling->skip_clk_scale_freq_update)
 		goto out;

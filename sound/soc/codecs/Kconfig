@@ -871,4 +871,14 @@ config SND_SOC_MSM_HDMI_CODEC_RX
 config SND_SOC_MSM_HDMI_DBA_CODEC_RX
 	bool "HDMI DBA Audio Playback"
 	depends on MSM_DBA
+	
+#zhonghongbin@wind-mobi.com add at 20180426 begin 	 
+config FOUR_PA
+	bool "Enable CONFIG_FOUR_PA"
+	help
+	 This macro is used to distinguish the PA 
+	 control of P101F and P102F projects.
+#zhonghongbin@wind-mobi.com add at 20180426 end
+
 endmenu
+

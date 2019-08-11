@@ -49,6 +49,9 @@ struct mmc_command {
 
 	unsigned int		retries;	/* max number of retries */
 	unsigned int		error;		/* command error */
+	//BH201LN driver--sunsiyuan@wind-mobi.com modify at 20180326 begin
+	u32  err_int_mask;
+	//BH201LN driver--sunsiyuan@wind-mobi.com modify at 20180326 end
 
 /*
  * Standard errno values are used for errors, but some have specific
@@ -65,6 +68,9 @@ struct mmc_command {
  */
 
 	unsigned int		busy_timeout;	/* busy detect timeout in ms */
+	//BH201LN driver--sunsiyuan@wind-mobi.com modify at 20180326 begin
+	unsigned int               sw_cmd_timeout;
+	//BH201LN driver--sunsiyuan@wind-mobi.com modify at 20180326 end
 	/* Set this flag only for blocking sanitize request */
 	bool			sanitize_busy;
 	/* Set this flag only for blocking bkops request */
@@ -81,7 +87,9 @@ struct mmc_data {
 	unsigned int		blocks;		/* number of blocks */
 	unsigned int		error;		/* data error */
 	unsigned int		flags;
-
+	//BH201LN driver--sunsiyuan@wind-mobi.com modify at 20180326 begin
+	u32  err_int_mask;
+	//BH201LN driver--sunsiyuan@wind-mobi.com modify at 20180326 end
 #define MMC_DATA_WRITE	(1 << 8)
 #define MMC_DATA_READ	(1 << 9)
 #define MMC_DATA_STREAM	(1 << 10)

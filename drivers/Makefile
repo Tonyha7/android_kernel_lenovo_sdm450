@@ -171,3 +171,7 @@ obj-$(CONFIG_BIF)		+= bif/
 
 obj-$(CONFIG_SENSORS)		+= sensors/
 obj-$(CONFIG_SENSORS_SSC)	+= sensors/
+
+#chengyewei@wind-mobi.com add tlmm 20180419
+obj-$(CONFIG_TLMM)	  += tlmm/
+#chengyewei@wind-mobi.com end 20180419

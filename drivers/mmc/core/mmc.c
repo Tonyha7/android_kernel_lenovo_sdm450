@@ -825,6 +825,8 @@ MMC_DEV_ATTR(raw_rpmb_size_mult, "%#x\n", card->ext_csd.raw_rpmb_size_mult);
 MMC_DEV_ATTR(enhanced_rpmb_supported, "%#x\n",
 		card->ext_csd.enhanced_rpmb_supported);
 MMC_DEV_ATTR(rel_sectors, "%#x\n", card->ext_csd.rel_sectors);
+MMC_DEV_ATTR(ram_size, "%d\n", card->ram_size);  //sunjingtao@wind-mobi.com add at 20180420
+MMC_DEV_ATTR(rom_size, "%d\n", card->rom_size);  //sunjingtao@wind-mobi.com add at 20180420
 
 static struct attribute *mmc_std_attrs[] = {
 	&dev_attr_cid.attr,
@@ -847,6 +849,8 @@ static struct attribute *mmc_std_attrs[] = {
 	&dev_attr_raw_rpmb_size_mult.attr,
 	&dev_attr_enhanced_rpmb_supported.attr,
 	&dev_attr_rel_sectors.attr,
+	&dev_attr_ram_size.attr,  //sunjingtao@wind-mobi.com add at 20180420
+	&dev_attr_rom_size.attr,  //sunjingtao@wind-mobi.com add at 20180420
 	NULL,
 };
 ATTRIBUTE_GROUPS(mmc_std);
@@ -1638,6 +1642,34 @@ out:
 	return err;
 }
 
+//sunjingtao@wind-mobi.com add at 20180420 begin
+static int get_ram_rom_size(struct mmc_card *card)
+{
+	if(!( strcmp(card->cid.prod_name, "QE63MB")) || !( strcmp(card->cid.prod_name, "HAG4a2")))
+	{
+		card->ram_size = 2;
+		card->rom_size = 16;
+	}
+	else if(!( strcmp(card->cid.prod_name, "GD6BMB")) || !( strcmp(card->cid.prod_name, "HBG4a2")) || !( strcmp(card->cid.prod_name, "hB8aP>")))
+	{
+		card->ram_size = 3;
+		card->rom_size = 32;
+	}
+	else if(!( strcmp(card->cid.prod_name, "RH64AB")) || !( strcmp(card->cid.prod_name, "HCG8a4")))
+	{
+		card->ram_size = 4;
+		card->rom_size = 64;
+	}
+	else
+	{
+		card->ram_size = 0;
+		card->rom_size = 0;
+	}
+
+	return 0;
+}
+//sunjingtao@wind-mobi.com add at 20180420 end
+
 /*
  * Handle the detection and initialisation of a card.
  *
@@ -2107,6 +2139,7 @@ reinit:
 		}
 	}
 
+	get_ram_rom_size(card);  //sunjingtao@wind-mobi.com add at 20180420
 	return 0;
 
 free_card:

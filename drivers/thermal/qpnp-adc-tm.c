@@ -2802,6 +2802,27 @@ static struct thermal_zone_device_ops qpnp_adc_tm_thermal_ops = {
 	.set_trip_temp = qpnp_adc_tm_set_trip_temp,
 };
 
+//wangpengpeng@wind-mobi.com begin at 20180425
+int wind_thermal_get_temp(struct thermal_zone_device *thermal)
+{
+    int ret = 0;
+	long temperature = 0;
+	
+    if (thermal) {
+        ret = thermal->ops->get_temp(thermal, &temperature);
+		//ret = thermal_zone_get_temp(thermal, &temperature);
+        if (ret != 0) {
+            pr_err("wind_thermal_get_temp error, return 60C---for safe\n");
+            return 60;
+        }
+    }
+	
+	pr_err("wpp wind_thermal_get_temp temp=%ld\n",temperature);
+	
+    return temperature;
+}
+//wangpengpeng@wind-mobi.com end at 20180425
+
 int32_t qpnp_adc_tm_channel_measure(struct qpnp_adc_tm_chip *chip,
 					struct qpnp_adc_tm_btm_param *param)
 {

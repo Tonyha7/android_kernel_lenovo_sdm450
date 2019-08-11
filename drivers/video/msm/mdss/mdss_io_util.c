@@ -17,6 +17,10 @@
 #include <linux/mdss_io_util.h>
 
 #define MAX_I2C_CMDS  16
+/* modify begin by zhangchaofan@wind-mobi.com, 2018-04-16 */
+extern unsigned int gesture_enable;
+/* modify end by zhangchaofan@wind-mobi.com, 2018-04-16 */
+
 void dss_reg_w(struct dss_io_data *io, u32 offset, u32 value, u32 debug)
 {
 	u32 in_val;
@@ -257,60 +261,77 @@ error:
 }
 EXPORT_SYMBOL(msm_dss_config_vreg_opt_mode);
 
+/* modify begin by sunjingtao@wind-mobi.com, 2018-05-04 */
 int msm_dss_enable_vreg(struct dss_vreg *in_vreg, int num_vreg, int enable)
 {
 	int i = 0, rc = 0;
 	bool need_sleep;
+	bool gesture_en = false;
+
 	if (enable) {
-		for (i = 0; i < num_vreg; i++) {
-			rc = PTR_RET(in_vreg[i].vreg);
-			if (rc) {
-				DEV_ERR("%pS->%s: %s regulator error. rc=%d\n",
-					__builtin_return_address(0), __func__,
-					in_vreg[i].vreg_name, rc);
-				goto vreg_set_opt_mode_fail;
-			}
-			need_sleep = !regulator_is_enabled(in_vreg[i].vreg);
-			if (in_vreg[i].pre_on_sleep && need_sleep)
-				usleep_range(in_vreg[i].pre_on_sleep * 1000,
-					in_vreg[i].pre_on_sleep * 1000);
-			rc = regulator_set_optimum_mode(in_vreg[i].vreg,
-				in_vreg[i].load[DSS_REG_MODE_ENABLE]);
-			if (rc < 0) {
-				DEV_ERR("%pS->%s: %s set opt m fail\n",
-					__builtin_return_address(0), __func__,
-					in_vreg[i].vreg_name);
-				goto vreg_set_opt_mode_fail;
-			}
-			rc = regulator_enable(in_vreg[i].vreg);
-			if (in_vreg[i].post_on_sleep && need_sleep)
-				usleep_range(in_vreg[i].post_on_sleep * 1000,
-					in_vreg[i].post_on_sleep * 1000);
-			if (rc < 0) {
-				DEV_ERR("%pS->%s: %s enable failed\n",
-					__builtin_return_address(0), __func__,
-					in_vreg[i].vreg_name);
-				goto disable_vreg;
+		if(gesture_en == false)
+		{
+			for (i = 0; i < num_vreg; i++) {
+				rc = PTR_RET(in_vreg[i].vreg);
+				if (rc) {
+					DEV_ERR("%pS->%s: %s regulator error. rc=%d\n",
+						__builtin_return_address(0), __func__,
+						in_vreg[i].vreg_name, rc);
+					goto vreg_set_opt_mode_fail;
+				}
+				need_sleep = !regulator_is_enabled(in_vreg[i].vreg);
+				if (in_vreg[i].pre_on_sleep && need_sleep)
+					usleep_range(in_vreg[i].pre_on_sleep * 1000,
+						in_vreg[i].pre_on_sleep * 1000);
+				rc = regulator_set_optimum_mode(in_vreg[i].vreg,
+					in_vreg[i].load[DSS_REG_MODE_ENABLE]);
+				if (rc < 0) {
+					DEV_ERR("%pS->%s: %s set opt m fail\n",
+						__builtin_return_address(0), __func__,
+						in_vreg[i].vreg_name);
+					goto vreg_set_opt_mode_fail;
+				}
+				rc = regulator_enable(in_vreg[i].vreg);
+				if (in_vreg[i].post_on_sleep && need_sleep)
+					usleep_range(in_vreg[i].post_on_sleep * 1000,
+						in_vreg[i].post_on_sleep * 1000);
+				if (rc < 0) {
+					DEV_ERR("%pS->%s: %s enable failed\n",
+						__builtin_return_address(0), __func__,
+						in_vreg[i].vreg_name);
+					goto disable_vreg;
+				}
 			}
 		}
-	} else {
-		for (i = num_vreg-1; i >= 0; i--) {
-			if (in_vreg[i].pre_off_sleep)
-				usleep_range(in_vreg[i].pre_off_sleep * 1000,
-					in_vreg[i].pre_off_sleep * 1000);
-			regulator_set_optimum_mode(in_vreg[i].vreg,
-				in_vreg[i].load[DSS_REG_MODE_DISABLE]);
+		else
+		{
+			gesture_en = false;
+		}
+	}else {
+		if (gesture_enable == 1)
+		{
+			gesture_en = true;
+		}
+		else
+		{
+			for (i = num_vreg-1; i >= 0; i--) {
+				if (in_vreg[i].pre_off_sleep)
+					usleep_range(in_vreg[i].pre_off_sleep * 1000,
+						in_vreg[i].pre_off_sleep * 1000);
+				regulator_set_optimum_mode(in_vreg[i].vreg,
+					in_vreg[i].load[DSS_REG_MODE_DISABLE]);
 
-			if (regulator_is_enabled(in_vreg[i].vreg))
-				regulator_disable(in_vreg[i].vreg);
+				if (regulator_is_enabled(in_vreg[i].vreg))
+					regulator_disable(in_vreg[i].vreg);
 
-			if (in_vreg[i].post_off_sleep)
-				usleep_range(in_vreg[i].post_off_sleep * 1000,
-					in_vreg[i].post_off_sleep * 1000);
+				if (in_vreg[i].post_off_sleep)
+					usleep_range(in_vreg[i].post_off_sleep * 1000,
+						in_vreg[i].post_off_sleep * 1000);
+			}
 		}
 	}
 	return rc;
-
+/* modify end by sunjingtao@wind-mobi.com, 2018-05-04 */
 disable_vreg:
 	regulator_set_optimum_mode(in_vreg[i].vreg,
 					in_vreg[i].load[DSS_REG_MODE_DISABLE]);

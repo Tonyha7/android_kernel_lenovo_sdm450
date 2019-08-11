@@ -1523,6 +1523,11 @@ static int qpnp_pon_config_init(struct qpnp_pon *pon)
 					"Unable to read s2-type\n");
 				return rc;
 			}
+			//do not enter ramdump mode in factory--sunsiyuan@wind-mobi.com modify at 20180528 begin
+			#if WIND_DISABLE_RAMDUMP_IN_FACTORY
+			cfg->s2_type = 4;
+			#endif
+			//do not enter ramdump mode in factory--sunsiyuan@wind-mobi.com modify at 20180528 end
 			if (cfg->s2_type > QPNP_PON_RESET_TYPE_MAX) {
 				dev_err(&pon->spmi->dev,
 					"Incorrect reset type specified\n");

@@ -2449,12 +2449,14 @@ static int msm_comm_session_abort(struct msm_vidc_inst *inst)
 	}
 	hdev = inst->core->device;
 	abort_completion = SESSION_MSG_INDEX(HAL_SESSION_ABORT_DONE);
+	mutex_lock(&inst->lock);//wangzhancai@wind-mobi.com 20180928
 	init_completion(&inst->completions[abort_completion]);
 
 	rc = call_hfi_op(hdev, session_abort, (void *)inst->session);
 	if (rc) {
 		dprintk(VIDC_ERR,
 			"%s session_abort failed rc: %d\n", __func__, rc);
+	mutex_unlock(&inst->lock);//wangzhancai@wind-mobi.com 20180928
 		return rc;
 	}
 	rc = wait_for_completion_timeout(
@@ -2469,6 +2471,7 @@ static int msm_comm_session_abort(struct msm_vidc_inst *inst)
 	} else {
 		rc = 0;
 	}
+	mutex_unlock(&inst->lock);//wangzhancai@wind-mobi.com 20180928
 	msm_comm_session_clean(inst);
 	return rc;
 }

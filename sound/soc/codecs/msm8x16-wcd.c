@@ -446,15 +446,17 @@ static bool msm8x16_adj_ref_current(struct snd_soc_codec *codec,
 	return true;
 }
 
+//zhonghongbin@wind-mobi.com modify at 20180429 begin
 void msm8x16_wcd_spk_ext_pa_cb(
 		int (*codec_spk_ext_pa)(struct snd_soc_codec *codec,
-			int enable), struct snd_soc_codec *codec)
+			int enable ,int HP_EN), struct snd_soc_codec *codec)
 {
 	struct msm8x16_wcd_priv *msm8x16_wcd = snd_soc_codec_get_drvdata(codec);
 
 	pr_debug("%s: Enter\n", __func__);
 	msm8x16_wcd->codec_spk_ext_pa_cb = codec_spk_ext_pa;
 }
+//zhonghongbin@wind-mobi.com modify at 20180429 end
 
 void msm8x16_wcd_hph_comp_cb(
 	int (*codec_hph_comp_gpio)(bool enable), struct snd_soc_codec *codec)
@@ -2814,6 +2816,12 @@ static const char * const adc2_mux_text[] = {
 	"ZERO", "INP2", "INP3"
 };
 
+//zhonghongbin@wind-mobi.com add at 20180429 begin
+static const char * const hp_text[] = {
+	"Off", "On"
+};
+//zhonghongbin@wind-mobi.com add at 20180429 end
+
 static const char * const ext_spk_text[] = {
 	"Off", "On"
 };
@@ -2833,6 +2841,13 @@ static const char * const iir_inp1_text[] = {
 static const struct soc_enum adc2_enum =
 	SOC_ENUM_SINGLE(SND_SOC_NOPM, 0,
 		ARRAY_SIZE(adc2_mux_text), adc2_mux_text);
+
+//zhonghongbin@wind-mobi.com add at 20180429 begin
+static const struct soc_enum hp_enum =
+	SOC_ENUM_SINGLE(SND_SOC_NOPM, 0,
+		ARRAY_SIZE(hp_text), hp_text);
+//zhonghongbin@wind-mobi.com add at 20180429 end
+
 
 static const struct soc_enum ext_spk_enum =
 	SOC_ENUM_SINGLE(SND_SOC_NOPM, 0,
@@ -2919,6 +2934,11 @@ static const struct soc_enum iir1_inp1_mux_enum =
 static const struct soc_enum iir2_inp1_mux_enum =
 	SOC_ENUM_SINGLE(MSM8X16_WCD_A_CDC_CONN_EQ2_B1_CTL,
 		0, 6, iir_inp1_text);
+
+//zhonghongbin@wind-mobi.com add at 20180429 begin
+static const struct snd_kcontrol_new hp_mux =
+	SOC_DAPM_ENUM("HP Switch Mux", hp_enum);
+//zhonghongbin@wind-mobi.com add at 20180429 end
 
 static const struct snd_kcontrol_new ext_spk_mux =
 	SOC_DAPM_ENUM("Ext Spk Switch Mux", ext_spk_enum);
@@ -4434,6 +4454,12 @@ static const struct snd_soc_dapm_route audio_map[] = {
 	{"HEADPHONE", NULL, "HPHL PA"},
 	{"HEADPHONE", NULL, "HPHR PA"},
 
+	//zhonghongbin@wind-mobi.com add at 20180429 begin
+	{"En HP",NULL,"HP Switch"},
+	{"HP Switch", "On", "HPHL PA"},
+	{"HP Switch", "On", "HPHR PA"},
+	//zhonghongbin@wind-mobi.com add at 20180429 end
+	
 	{"Ext Spk", NULL, "Ext Spk Switch"},
 	{"Ext Spk Switch", "On", "HPHL PA"},
 	{"Ext Spk Switch", "On", "HPHR PA"},
@@ -4928,29 +4954,54 @@ static int msm8x16_wcd_codec_enable_lo_pa(struct snd_soc_dapm_widget *w,
 	return 0;
 }
 
+//zhonghongbin@wind-mobi.com add at 20180429 begin
+static int msm8x16_wcd_codec_enable_hp(struct snd_soc_dapm_widget *w,
+		struct snd_kcontrol *kcontrol, int event)
+{
+	struct snd_soc_codec *codec = w->codec;
+	struct msm8x16_wcd_priv *msm8x16_wcd = snd_soc_codec_get_drvdata(codec);
+
+	dev_dbg(codec->dev, "zhb %s: %s event = %d\n", __func__, w->name, event);
+	switch (event) {
+	case SND_SOC_DAPM_POST_PMU:
+		dev_dbg(w->codec->dev,"zhb %s: enable PA and headphone!\n", __func__);
+		if (msm8x16_wcd->codec_spk_ext_pa_cb)
+			msm8x16_wcd->codec_spk_ext_pa_cb(codec, 1, 1);
+		break;
+		
+	case SND_SOC_DAPM_PRE_PMD:
+		dev_dbg(w->codec->dev,"zhb %s: enable PA and headphone!\n", __func__);
+		if (msm8x16_wcd->codec_spk_ext_pa_cb)
+			msm8x16_wcd->codec_spk_ext_pa_cb(codec, 0, 0);
+		break;
+	}
+	return 0;
+}
+//zhonghongbin@wind-mobi.com add at 20180429 end
+
 static int msm8x16_wcd_codec_enable_spk_ext_pa(struct snd_soc_dapm_widget *w,
 		struct snd_kcontrol *kcontrol, int event)
 {
 	struct snd_soc_codec *codec = w->codec;
 	struct msm8x16_wcd_priv *msm8x16_wcd = snd_soc_codec_get_drvdata(codec);
 
-	dev_dbg(codec->dev, "%s: %s event = %d\n", __func__, w->name, event);
+	dev_dbg(codec->dev, "zhb %s: %s event = %d\n", __func__, w->name, event);
 	switch (event) {
 	case SND_SOC_DAPM_POST_PMU:
-		dev_dbg(w->codec->dev,
-			"%s: enable external speaker PA\n", __func__);
+		dev_dbg(w->codec->dev,"zhb %s: enable external speaker PA\n", __func__);
 		if (msm8x16_wcd->codec_spk_ext_pa_cb)
-			msm8x16_wcd->codec_spk_ext_pa_cb(codec, 1);
+			msm8x16_wcd->codec_spk_ext_pa_cb(codec, 1, 0);
 		break;
 	case SND_SOC_DAPM_PRE_PMD:
-		dev_dbg(w->codec->dev,
-			"%s: enable external speaker PA\n", __func__);
+		dev_dbg(w->codec->dev,"zhb %s: enable external speaker PA\n", __func__);
 		if (msm8x16_wcd->codec_spk_ext_pa_cb)
-			msm8x16_wcd->codec_spk_ext_pa_cb(codec, 0);
+			msm8x16_wcd->codec_spk_ext_pa_cb(codec, 0, 0);
 		break;
 	}
 	return 0;
 }
+
+
 
 static int msm8x16_wcd_codec_enable_ear_pa(struct snd_soc_dapm_widget *w,
 	struct snd_kcontrol *kcontrol, int event)
@@ -5046,6 +5097,8 @@ static const struct snd_soc_dapm_widget msm8x16_wcd_dapm_widgets[] = {
 
 	SND_SOC_DAPM_SUPPLY("INT_LDO_H", SND_SOC_NOPM, 1, 0, NULL, 0),
 
+	SND_SOC_DAPM_SPK("En HP", msm8x16_wcd_codec_enable_hp),//zhonghongbin@wind-mobi.com add at 20180429 
+
 	SND_SOC_DAPM_SPK("Ext Spk", msm8x16_wcd_codec_enable_spk_ext_pa),
 
 	SND_SOC_DAPM_OUTPUT("HEADPHONE"),
@@ -5111,6 +5164,9 @@ static const struct snd_soc_dapm_widget msm8x16_wcd_dapm_widgets[] = {
 	SND_SOC_DAPM_SUPPLY("VDD_SPKDRV", SND_SOC_NOPM, 0, 0,
 			    msm89xx_wcd_codec_enable_vdd_spkr,
 			    SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
+
+	SND_SOC_DAPM_MUX("HP Switch", SND_SOC_NOPM, 0, 0,
+		&hp_mux),//zhonghongbin@wind-mobi.com add at 20180429
 
 	SND_SOC_DAPM_MUX("Ext Spk Switch", SND_SOC_NOPM, 0, 0,
 		&ext_spk_mux),
@@ -5478,7 +5534,7 @@ static struct regulator *wcd8x16_wcd_codec_find_regulator(
 			return msm8x16->supplies[i].consumer;
 	}
 
-	dev_dbg(msm8x16->dev, "Error: regulator not found:%s\n"
+	dev_err(msm8x16->dev, "Error: regulator not found:%s\n"
 				, name);
 	return NULL;
 }
