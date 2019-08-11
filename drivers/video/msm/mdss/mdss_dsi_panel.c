@@ -22,6 +22,7 @@
 #include <linux/qpnp/pwm.h>
 #include <linux/err.h>
 #include <linux/string.h>
+#include "../../../input/touchscreen/focaltech_touch/focaltech_core.h"  //sunjingtao@wind-mobi.com modify at 20180502
 
 #include "mdss_dsi.h"
 #ifdef TARGET_HW_MDSS_HDMI
@@ -32,6 +33,10 @@
 #define DEFAULT_MDP_TRANSFER_TIME 14000
 
 #define VSYNC_DELAY msecs_to_jiffies(17)
+/* modify begin by zhangchaofan@wind-mobi.com, 2018-04-25 */
+//extern unsigned int gesture_enable;
+/* modify end by zhangchaofan@wind-mobi.com, 2018-04-25 */
+
 
 DEFINE_LED_TRIGGER(bl_led_trigger);
 
@@ -209,10 +214,15 @@ static void mdss_dsi_panel_cmds_send(struct mdss_dsi_ctrl_pdata *ctrl,
 	mdss_dsi_cmdlist_put(ctrl, &cmdreq);
 }
 
-static char led_pwm1[2] = {0x51, 0x0};	/* DTYPE_DCS_WRITE1 */
-static struct dsi_cmd_desc backlight_cmd = {
-	{DTYPE_DCS_WRITE1, 1, 0, 0, 1, sizeof(led_pwm1)},
-	led_pwm1
+/* modify begin by zhangchaofan@wind-mobi.com, 2018-3-19 */
+static char bank[3] = {0x50, 0x5A,0x23};	/* DTYPE_DCS_LWRITE */
+static char led_pwm1[3] = {0x90, 0x00, 0x00};	/* DTYPE_DCS_LWRITE */
+static char bank_off[2] = {0x50, 0x00};	/* DTYPE_DCS_WRITE1 */
+
+static struct dsi_cmd_desc backlight_cmd[] = {
+	{{DTYPE_DCS_LWRITE, 1, 0, 0, 1, sizeof(bank)},bank},
+	{{DTYPE_DCS_LWRITE, 1, 0, 0, 1, sizeof(led_pwm1)},led_pwm1},
+	{{DTYPE_DCS_WRITE1, 1, 0, 0, 1, sizeof(bank_off)},bank_off},
 };
 
 static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl, int level)
@@ -225,20 +235,18 @@ static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 		if (ctrl->ndx != DSI_CTRL_LEFT)
 			return;
 	}
-
 	pr_debug("%s: level=%d\n", __func__, level);
-
-	led_pwm1[1] = (unsigned char)level;
-
+	led_pwm1[1] = (unsigned char)(level >> 4);
+	led_pwm1[2] = (unsigned char)(level&0x0f);
 	memset(&cmdreq, 0, sizeof(cmdreq));
-	cmdreq.cmds = &backlight_cmd;
-	cmdreq.cmds_cnt = 1;
+	cmdreq.cmds = backlight_cmd;
+	cmdreq.cmds_cnt = 3;
 	cmdreq.flags = CMD_REQ_COMMIT;
 	cmdreq.rlen = 0;
 	cmdreq.cb = NULL;
-
 	mdss_dsi_cmdlist_put(ctrl, &cmdreq);
 }
+/* modify end by zhangchaofan@wind-mobi.com, 2018-3-19 */
 
 static void mdss_dsi_panel_set_idle_mode(struct mdss_panel_data *pdata,
 							bool enable)
@@ -431,14 +439,27 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 					goto exit;
 				}
 			}
-
+//sunjingtao@wind-mobi.com modify at 20180730 begin
 			for (i = 0; i < pdata->panel_info.rst_seq_len; ++i) {
 				gpio_set_value((ctrl_pdata->rst_gpio),
 					pdata->panel_info.rst_seq[i]);
 				if (pdata->panel_info.rst_seq[++i])
 					usleep_range(pinfo->rst_seq[i] * 1000, pinfo->rst_seq[i] * 1000);
-			}
+				if(NULL != fts_data){
+				if(i == 1)
+				{
+					gpio_direction_output(fts_data->pdata->reset_gpio, 0);
+					usleep_range(pinfo->rst_seq[i] * 1000, pinfo->rst_seq[i] * 1000);
+				}
+				else if(i == 3)
+				{
+					gpio_direction_output(fts_data->pdata->reset_gpio, 1);
+					usleep_range(pinfo->rst_seq[i] * 1000, pinfo->rst_seq[i] * 1000);
+				}
+				}
 
+			}
+//sunjingtao@wind-mobi.com modify at 20180730 end
 			if (gpio_is_valid(ctrl_pdata->bklt_en_gpio)) {
 				rc = gpio_direction_output(
 					ctrl_pdata->bklt_en_gpio, 1);
@@ -480,8 +501,10 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 			gpio_set_value((ctrl_pdata->disp_en_gpio), 0);
 			gpio_free(ctrl_pdata->disp_en_gpio);
 		}
-		gpio_set_value((ctrl_pdata->rst_gpio), 0);
+		/* modify begin by zhangchaofan@wind-mobi.com, 2018-04-25 */
+		gpio_set_value((ctrl_pdata->rst_gpio), 1);
 		gpio_free(ctrl_pdata->rst_gpio);
+		/* modify end by zhangchaofan@wind-mobi.com, 2018-04-25 */
 		if (gpio_is_valid(ctrl_pdata->mode_gpio))
 			gpio_free(ctrl_pdata->mode_gpio);
 	}
