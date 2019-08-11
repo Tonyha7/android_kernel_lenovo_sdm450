@@ -95,5 +95,8 @@ endif
 ifeq ($(WIND_INPUT_SXT316),true)
 obj-$(CONFIG_INPUT_SXT316)		+= sxT316.o
 endif
+ifeq ($(WIND_FACTORY_CLOSE_SAR),true)
+	EXTRA_CFLAGS += -DFACTORY_CLOSE_SAR
+endif
 
 obj-$(CONFIG_INPUT_FPC1020)	+= fpc_irq.o fpc1020_platform_tee.o
