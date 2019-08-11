@@ -53,12 +53,16 @@ static int msm_get_read_mem_size
 				eeprom_map->memory_map_size);
 			return -EINVAL;
 		}
+//##***wangzhancai@wind-mobi.com  --20180227 start ***
 		for (i = 0; i < eeprom_map->memory_map_size; i++) {
-			if (eeprom_map->mem_settings[i].i2c_operation ==
-				MSM_CAM_READ) {
+			if ((eeprom_map->mem_settings[i].i2c_operation ==
+				MSM_CAM_READ) ||
+				(eeprom_map->mem_settings[i].i2c_operation ==  /*add for gc5025*/
+				MSM_CAM_READ_GC5025)) {
 				size += eeprom_map->mem_settings[i].reg_data;
 			}
 		}
+//##***wangzhancai@wind-mobi.com  --20180227 end ***
 	}
 	CDBG("Total Data Size: %d\n", size);
 	return size;
@@ -314,7 +318,58 @@ ERROR:
 	memset(data, 0, sizeof(*data));
 	return rc;
 }
+//##***wangzhancai@wind-mobi.com  --20180316 start ***
 
+#if 1
+
+static int hynix_hi556_otp_readmode_initial(struct msm_eeprom_ctrl_t *e_ctrl, uint8_t *memptr)
+{
+	int rc = 0;
+	uint32_t snsid_addr = 0x0f16;
+	uint16_t sensor_id;
+	int i = 0;
+	e_ctrl->i2c_client.addr_type = MSM_CAMERA_I2C_WORD_ADDR;
+	if (e_ctrl->i2c_client.cci_client) {
+			e_ctrl->i2c_client.cci_client->sid = 0x20;
+	} else if (e_ctrl->i2c_client.client) {
+			e_ctrl->i2c_client.client->addr = 0x20;
+	}
+	rc = e_ctrl->i2c_client.i2c_func_tbl->i2c_read(&(e_ctrl->i2c_client),
+			snsid_addr, &sensor_id, 2);
+	if (rc < 0) {
+		CDBG("\r\n LK hi556 <3>""%s: otp sensor id read failed\n", __func__);
+	}
+	msleep(20);
+	pr_err("\r\n LK hi556 %s: sensor_id = 0x%x \n", __func__, sensor_id);
+	if (sensor_id == 0x0556) {
+		CDBG("\r\n LK hi556%s:%d hi556 sensor otp", __func__, __LINE__);
+		rc = e_ctrl->i2c_client.i2c_func_tbl->i2c_write_table(&(e_ctrl->i2c_client), &hi556_otp_read_init_setting);
+		rc = e_ctrl->i2c_client.i2c_func_tbl->i2c_write_table(&(e_ctrl->i2c_client), &hi556_otp_read_init_setting_start);
+	}
+	else {
+		CDBG("\r\n LK hi556 %s:%d other sensor otp", __func__, __LINE__);
+		return -1;
+	}
+	if (rc < 0) {
+		CDBG("\r\n LK hi556 <3>""%s: otp read mode initial setting failed\n", __func__);
+		return rc;
+	}
+	for(i = 0; i< 0x8f; i++){//0xA8F
+		e_ctrl->i2c_client.i2c_func_tbl->i2c_read_seq(&(e_ctrl->i2c_client),
+			0x0108, memptr, 1);
+		memptr++;
+	}
+	rc = e_ctrl->i2c_client.i2c_func_tbl->i2c_write_table(&(e_ctrl->i2c_client), &hi556_otp_read_init_setting_end);
+	if (rc < 0) {
+		CDBG("\r\n LK hi556 <3>""%s: otp read mode initial setting failed\n", __func__);
+		return rc;
+	}
+	msleep(20);
+	CDBG("\r\n   hi556 %s read success\n", __func__);
+	return 0x556;
+}
+#endif
+//##***wangzhancai@wind-mobi.com  --20180316 end ***
 /**
   * eeprom_parse_memory_map - Parse mem map
   * @e_ctrl:	ctrl structure
@@ -325,7 +380,10 @@ ERROR:
 static int eeprom_parse_memory_map(struct msm_eeprom_ctrl_t *e_ctrl,
 	struct msm_eeprom_memory_map_array *eeprom_map_array)
 {
-	int rc =  0, i, j;
+//##***wangzhancai@wind-mobi.com  --20180227 start ***
+	int rc =  0, i, j, gc;
+	uint16_t gc_read = 0;
+//##***wangzhancai@wind-mobi.com  --20180227 end ***
 	uint8_t *memptr;
 	struct msm_eeprom_mem_map_t *eeprom_map;
 
@@ -341,6 +399,15 @@ static int eeprom_parse_memory_map(struct msm_eeprom_ctrl_t *e_ctrl,
 		kzalloc(e_ctrl->cal_data.num_data, GFP_KERNEL);
 	if (!e_ctrl->cal_data.mapdata)
 		return -ENOMEM;
+//##***wangzhancai@wind-mobi.com  --20180316 start ***
+#if 1
+	rc = hynix_hi556_otp_readmode_initial(e_ctrl, e_ctrl->cal_data.mapdata);
+	if (rc == 0x556){
+		rc = 0;
+		goto success;
+	}
+#endif
+//##***wangzhancai@wind-mobi.com  --20180316 end ***
 
 	memptr = e_ctrl->cal_data.mapdata;
 	for (j = 0; j < eeprom_map_array->msm_size_of_max_mappings; j++) {
@@ -406,6 +473,68 @@ static int eeprom_parse_memory_map(struct msm_eeprom_ctrl_t *e_ctrl,
 				memptr += eeprom_map->mem_settings[i].reg_data;
 			}
 			break;
+//##***wangzhancai@wind-mobi.com  --20180227 start ***
+			case MSM_CAM_READ_GC5025: { /*add for gc5025 & gc5025a*/
+				e_ctrl->i2c_client.addr_type = 1;
+                                CDBG("enter gc5025");
+				if(1 == eeprom_map->mem_settings[i].reg_data) {
+					e_ctrl->i2c_client.i2c_func_tbl->i2c_write(
+ 						&(e_ctrl->i2c_client), 0xd4,
+ 						0x80 | ((eeprom_map->mem_settings[i].reg_addr >> 8) & 0xff),
+						eeprom_map->mem_settings[i].data_type);
+					e_ctrl->i2c_client.i2c_func_tbl->i2c_write(
+ 						&(e_ctrl->i2c_client), 0xd5,
+ 						eeprom_map->mem_settings[i].reg_addr & 0xff,
+						eeprom_map->mem_settings[i].data_type);
+					e_ctrl->i2c_client.i2c_func_tbl->i2c_write(
+ 						&(e_ctrl->i2c_client), 0xf3, 0x20,
+						eeprom_map->mem_settings[i].data_type);
+					msleep(eeprom_map->mem_settings[i].delay);
+					rc = e_ctrl->i2c_client.i2c_func_tbl->i2c_read(
+						&(e_ctrl->i2c_client), 0xd7, &gc_read,
+						eeprom_map->mem_settings[i].data_type);
+					*memptr = (uint8_t)gc_read;
+					memptr++;
+				CDBG("%s: %d 0 *memptr %d memptr= %p\n",
+					__func__, __LINE__, *memptr,memptr);
+				}
+				else {
+					e_ctrl->i2c_client.i2c_func_tbl->i2c_write(
+ 						&(e_ctrl->i2c_client), 0xd4,
+ 						0x80 | ((eeprom_map->mem_settings[i].reg_addr >> 8) & 0xff),
+						eeprom_map->mem_settings[i].data_type);
+					e_ctrl->i2c_client.i2c_func_tbl->i2c_write(
+ 						&(e_ctrl->i2c_client), 0xd5,
+ 						eeprom_map->mem_settings[i].reg_addr & 0xff,
+						eeprom_map->mem_settings[i].data_type);
+					e_ctrl->i2c_client.i2c_func_tbl->i2c_write(
+ 						&(e_ctrl->i2c_client), 0xf3, 0x20,
+						eeprom_map->mem_settings[i].data_type);
+					e_ctrl->i2c_client.i2c_func_tbl->i2c_write(
+ 						&(e_ctrl->i2c_client), 0xf3, 0x88,
+						eeprom_map->mem_settings[i].data_type);
+					msleep(eeprom_map->mem_settings[i].delay);
+					for(gc = 0; gc < eeprom_map->mem_settings[i].reg_data; gc++) {
+						msleep(eeprom_map->mem_settings[i].delay);
+						rc = e_ctrl->i2c_client.i2c_func_tbl->i2c_read(
+							&(e_ctrl->i2c_client), 0xd7, &gc_read,
+							eeprom_map->mem_settings[i].data_type);
+						if (rc < 0) {
+							pr_err("%s: read failed\n",
+								__func__);
+							goto clean_up;
+						}
+						*memptr = (uint8_t)gc_read;
+				CDBG("%s: %d 1 memptr[%d]= %x memptr= %p\n",
+					__func__, __LINE__,gc,  memptr[gc],memptr);
+					        memptr++;
+					}
+				pr_err("%s: %d out   memptr= %p\n",
+					__func__, __LINE__,memptr);
+				}
+			}
+//##***wangzhancai@wind-mobi.com  --20180227 end ***
+			break;
 			default:
 				pr_err("%s: %d Invalid i2c operation LC:%d\n",
 					__func__, __LINE__, i);
@@ -416,6 +545,9 @@ static int eeprom_parse_memory_map(struct msm_eeprom_ctrl_t *e_ctrl,
 	memptr = e_ctrl->cal_data.mapdata;
 	for (i = 0; i < e_ctrl->cal_data.num_data; i++)
 		CDBG("memory_data[%d] = 0x%X\n", i, memptr[i]);
+#if 1
+success:
+#endif
 	return rc;
 
 clean_up:
