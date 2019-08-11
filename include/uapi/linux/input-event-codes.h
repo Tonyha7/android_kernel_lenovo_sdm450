@@ -339,6 +339,7 @@
 
 #define KEY_SAR_LTE_CS1		249
 #define KEY_SAR_LTE_CS2		250
+#define KEY_SAR_WIFI_CS		251
 
 /* Code 255 is reserved for special needs of AT keyboard driver */
 
