@@ -1226,6 +1226,11 @@ void sdhci_send_command(struct sdhci_host *host, struct mmc_command *cmd)
 		timeout += DIV_ROUND_UP(cmd->busy_timeout, 1000) * HZ + HZ;
 	else
 		timeout += 10 * HZ;
+	//BH201LN driver--sunsiyuan@wind-mobi.com modify at 20180326 begin
+	if(cmd->sw_cmd_timeout) {	
+		timeout=jiffies+msecs_to_jiffies(cmd->sw_cmd_timeout);
+		}
+	//BH201LN driver--sunsiyuan@wind-mobi.com modify at 20180326 end
 	mod_timer(&host->timer, timeout);
 
 	host->cmd = cmd;
@@ -2889,7 +2894,10 @@ static void sdhci_cmd_irq(struct sdhci_host *host, u32 intmask, u32 *mask)
 
 	trace_mmc_cmd_rw_end(host->cmd->opcode, intmask,
 				sdhci_readl(host, SDHCI_RESPONSE));
-
+	//BH201LN driver--sunsiyuan@wind-mobi.com modify at 20180326 begin
+	host->cmd->err_int_mask =intmask;
+	//BH201LN driver--sunsiyuan@wind-mobi.com modify at 20180326 end
+	
 	if (intmask & SDHCI_INT_TIMEOUT)
 		host->cmd->error = -ETIMEDOUT;
 	else if (intmask & (SDHCI_INT_CRC | SDHCI_INT_END_BIT |

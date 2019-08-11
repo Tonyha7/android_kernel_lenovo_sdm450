@@ -431,6 +431,9 @@ struct mmc_card {
 	u8 *cached_ext_csd;
 	bool cmdq_init;
 	struct mmc_bkops_info bkops;
+
+	int ram_size;  //sunjingtao@wind-mobi.com add at 20180420
+	int rom_size;  //sunjingtao@wind-mobi.com add at 20180420
 };
 
 /*
