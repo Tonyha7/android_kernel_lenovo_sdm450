@@ -905,7 +905,14 @@ static int qpnp_mpp_set(struct qpnp_led_data *led)
 		}
 		if (led->mpp_cfg->pwm_mode == PWM_MODE) {
 			/*config pwm for brightness scaling*/
-			period_us = led->mpp_cfg->pwm_cfg->pwm_period_us;
+			//zhangchao@wind-mobi.com 20180323 begin
+			if (led->cdev.brightness > 250) {
+				period_us = 1000; 
+			}
+			else {
+				period_us = led->mpp_cfg->pwm_cfg->pwm_period_us;
+			}
+			//zhangchao@wind-mobi.com 20180323 end
 			if (period_us > INT_MAX / NSEC_PER_USEC) {
 				duty_us = (period_us * led->cdev.brightness) /
 					LED_FULL;
